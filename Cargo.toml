@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4"
+bcrypt = "0.15.1"
 diesel = { version = "2.2.4", features = ["postgres" , "postgres_backend"] }
 dotenv = "0.15.0"
 serde = { version = "1.0.210", features = ["derive"] }

@@ -3,6 +3,7 @@ use crate::utils::response::{ErrorResponse, ApiResponse};
 use actix_web::{get, post, web::{self, Data, Json}, HttpResponse, Responder};
 use diesel::{self, query_dsl::methods::FilterDsl, ExpressionMethods, RunQueryDsl};
 use uuid::Uuid;
+use bcrypt::{hash, verify};
 
 
 #[get("/hello")]
@@ -11,11 +12,12 @@ pub async fn hello() -> impl Responder {
 }
 
 #[post("/signup")]
-pub async fn user_signup(db: web::Data<DBState>, user_data: Json<NewUser>) -> impl Responder {
+pub async fn user_signup(db: web::Data<DBState>, mut user_data: Json<NewUser>) -> impl Responder {
     use crate::schema::users::dsl::users;
     match web::block(move || {
     let user1: Vec<User> = users.filter(username.eq(&user_data.username)).load(&mut *db.client.lock().unwrap()).expect("Database crashed");
     let user2: Vec<User> = users.filter(email.eq(&user_data.email)).load(&mut *db.client.lock().unwrap()).expect("Database crashed");
+    user_data.password = hash(&user_data.password, 14).unwrap();
         ((user1, user2), db, user_data)
      }).await {
         Ok(user) => {
@@ -60,7 +62,7 @@ pub async fn user_signin(db: Data<DBState>, credentials: Json<Any>) -> impl Resp
                         data: "user does not exist"
                     })
                 } else {
-                    if user_by_email[0].password == y {
+                    if verify(&y, &user_by_email[0].password).unwrap() {
                         let auth_token: String = Uuid::new_v4().to_string();
                         diesel::update(crate::schema::users::table)
                                 .filter(email.eq(&user_by_email[0].email))
@@ -87,7 +89,7 @@ pub async fn user_signin(db: Data<DBState>, credentials: Json<Any>) -> impl Resp
                         data: "user does not exist"
                     })
                 } else {
-                    if user_by_username[0].password == y {
+                    if verify(&y, &user_by_username[0].password).unwrap() {
                         let auth_token: String = Uuid::new_v4().to_string();
                         diesel::update(crate::schema::users::table)
                         .filter(email.eq(&user_by_username[0].email))
@@ -108,4 +110,11 @@ pub async fn user_signin(db: Data<DBState>, credentials: Json<Any>) -> impl Resp
                 }
             }
         }
+}
+
+#[get("/unauthorized")]
+pub async fn unauthorized() -> impl Responder {
+    HttpResponse::BadRequest().json(ApiResponse {
+        data: "unauthorized"
+    })
 }

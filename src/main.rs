@@ -2,14 +2,14 @@ mod routes;
 mod models;
 mod schema;
 mod utils;
-extern crate uuid;
-extern crate actix_web;
-extern crate dotenv;
-extern crate diesel;
-use actix_web::{web::{self}, App, HttpServer};
-use diesel::{Connection, PgConnection};
-use routes::routes::{hello, user_signup, user_signin};
+use actix_web::{dev::{Service, Url}, http::{Method, Uri}, web::{self}, App, HttpServer};
+use diesel::{self, RunQueryDsl};
+use crate::schema::users::dsl::users;
+use diesel::{query_dsl::methods::FilterDsl, Connection, ExpressionMethods, PgConnection};
+use models::models::User;
+use routes::routes::{hello, unauthorized, user_signin, user_signup};
 use dotenv::dotenv;
+use schema::users::token;
 use std::{env, sync::{Arc, Mutex}};
 
 
@@ -24,14 +24,41 @@ async fn main() -> std::io::Result<()> {
     let connection = Arc::new(Mutex::new(PgConnection::establish(&databse_url).expect("Database not connected!")));
 
     HttpServer::new(move || {
+        let connection_clone = connection.clone();
         App::new()
             .app_data(web::Data::new(DBState{
                 client: Arc::clone(&connection)
             }))
+            .wrap_fn(move |mut req, srv| {
+                if req.path() != "/api/signin" && req.path() != "/api/signin" {
+                    let headers = req.headers();
+                    match headers.get("Authorization") {
+                        Some(auth_token) => {
+                            let user: Vec<User> = users.filter(token.eq(auth_token.to_str().unwrap())).load(&mut *connection_clone.lock().unwrap()).expect("Databse crashed");
+                            if user.len() != 0 {
+                                srv.call(req)
+                            } else {
+                                req.head_mut().method = Method::GET;
+                                req.match_info_mut().set(Url::new(Uri::from_static("/api/unauthorized")));
+                                srv.call(req)
+                            }
+                            
+                        },
+                        None => {
+                            req.head_mut().method = Method::GET;
+                            req.match_info_mut().set(Url::new(Uri::from_static("/api/unauthorized")));
+                            srv.call(req)
+                        }
+                    }
+                } else {
+                    srv.call(req)
+                }
+            })
             .service(web::scope("/api")
             .service(hello)
             .service(user_signup)
             .service(user_signin)
+            .service(unauthorized)
         )
     })
     .bind(("127.0.0.1", 8080))?
