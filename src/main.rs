@@ -2,16 +2,15 @@ mod routes;
 mod models;
 mod schema;
 mod utils;
-use actix_web::{dev::{Service, Url}, http::{Method, Uri}, web::{self}, App, HttpServer};
-use diesel::{self, RunQueryDsl};
+mod socket;
 use crate::schema::users::dsl::users;
-use diesel::{query_dsl::methods::FilterDsl, Connection, ExpressionMethods, PgConnection};
+use actix_web::{dev::{Service, Url}, http::{Method, Uri}, web::{self}, App, HttpServer};
+use diesel::{self, RunQueryDsl, query_dsl::methods::FilterDsl, Connection, ExpressionMethods, PgConnection};
 use models::models::User;
 use routes::routes::{hello, unauthorized, user_signin, user_signup};
 use dotenv::dotenv;
 use schema::users::token;
 use std::{env, sync::{Arc, Mutex}};
-
 
 pub struct DBState{
     client: Arc<Mutex<PgConnection>>
@@ -30,7 +29,7 @@ async fn main() -> std::io::Result<()> {
                 client: Arc::clone(&connection)
             }))
             .wrap_fn(move |mut req, srv| {
-                if req.path() != "/api/signin" && req.path() != "/api/signin" {
+                if req.path() != "/api/signup" && req.path() != "/api/signin" {
                     let headers = req.headers();
                     match headers.get("Authorization") {
                         Some(auth_token) => {

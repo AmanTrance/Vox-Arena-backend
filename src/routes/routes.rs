@@ -1,6 +1,6 @@
 use crate::{models::models::{Any, NewUser, ReturnUser, User}, schema::users::{email, token, username}, DBState};
 use crate::utils::response::{ErrorResponse, ApiResponse};
-use actix_web::{get, post, web::{self, Data, Json}, HttpResponse, Responder};
+use actix_web::{get, post, web::{self, Data, Json}, HttpRequest, HttpResponse, Responder};
 use diesel::{self, query_dsl::methods::FilterDsl, ExpressionMethods, RunQueryDsl};
 use uuid::Uuid;
 use bcrypt::{hash, verify};
@@ -117,4 +117,9 @@ pub async fn unauthorized() -> impl Responder {
     HttpResponse::BadRequest().json(ApiResponse {
         data: "unauthorized"
     })
+}
+
+#[get("/ws")]
+pub async fn initialize_ws(req: HttpRequest, stream: web::Payload,) -> impl Responder {
+    HttpResponse::Ok()
 }
