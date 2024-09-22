@@ -75,9 +75,9 @@ impl ArenaHandler {
             Some(id) => {
                 let mut i: usize = 0;
                 for room in self.rooms.iter_mut() {
-                    if room.room_id == id {
+                    if (*room).room_id == id {
                         for (index, user_id) in room.users.iter().enumerate() {
-                            if user_id == &conn_id {
+                            if *user_id == conn_id {
                                 i = index;        
                             }
                         }
