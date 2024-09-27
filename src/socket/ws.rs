@@ -65,6 +65,6 @@ pub async fn handle_ws<'s>(sender: Arc<mpsc::Sender<Command>>, mut session: Sess
         }
     };
 
-    sender.send(Command::Disconnect { conn_id: connection_id.unwrap(), room_id: room_id }).await.unwrap();
+    sender.send(Command::Disconnect { conn_id: connection_id.unwrap(), room_id }).await.unwrap();
     session.close(reason).await.unwrap();
 }
