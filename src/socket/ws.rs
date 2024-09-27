@@ -5,17 +5,17 @@ use tokio::{sync::mpsc, time::interval};
 use std::{sync::Arc, time::{Duration, Instant}, pin::pin};
 
 const HEARTBEATS: Duration = Duration::from_secs(5);
-const TIMEOUT: Duration = Duration::from_secs(15); 
+const TIMEOUT: Duration = Duration::from_secs(10); 
 
-pub async fn handle_ws<'s>(sender: Arc<mpsc::Sender<Command>>, mut session: Session, stream: MessageStream ) {
+pub async fn handle_ws(sender: Arc<mpsc::Sender<Command>>, mut session: Session, stream: MessageStream) -> () {
     let mut connection_id: Option<String> = None;
     let mut room_id: Option<String> = None;
     let mut last_heartbeat = Instant::now();
     let mut interval = interval(HEARTBEATS);
     let (crx, mut crc) = mpsc::channel::<Message>(100);
-    sender.send(Command::Connect { sender: crx }).await.unwrap();
     let msg_stream: actix_ws::AggregatedMessageStream = stream.max_frame_size(5*1024*1024).aggregate_continuations().max_continuation_size(10*1024*1024);
     let mut msg_stream: std::pin::Pin<&mut actix_ws::AggregatedMessageStream> = pin!(msg_stream);
+    sender.send(Command::Connect { sender: crx }).await.unwrap();
     let reason = loop {
         let tick = pin!(interval.tick());
         let msg_crc = pin!(crc.recv());

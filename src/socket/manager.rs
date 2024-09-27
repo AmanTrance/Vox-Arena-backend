@@ -71,6 +71,9 @@ impl ArenaHandler {
         let id: ConnectionId = Uuid::new_v4().to_string();
         let mut room_id: Option<String> = None;
         self.user_map.insert(id.clone(), sender);
+        if self.rooms.len() == 0 || self.rooms[self.rooms.len() - 1_usize].length() == 5 {
+            self.rooms.push(Room::new());
+        } 
         for room in self.rooms.iter_mut() {
             if room.length() < 5 {
                 room.users.push(id.clone());
