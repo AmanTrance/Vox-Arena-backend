@@ -1,9 +1,12 @@
-use crate::{models::models::{Any, NewUser, ReturnUser, User}, schema::users::{email, token, username}, DBState};
+use crate::{models::models::{Any, NewUser, ReturnUser, User}, schema::users::{email, token, username}, socket::manager::Command, DBState};
 use crate::utils::response::{ErrorResponse, ApiResponse};
+use crate::socket::ws::handle_ws;
 use actix_web::{get, post, web::{self, Data, Json}, HttpRequest, HttpResponse, Responder};
 use diesel::{self, query_dsl::methods::FilterDsl, ExpressionMethods, RunQueryDsl};
+use tokio::{sync::mpsc, task::spawn_local};
 use uuid::Uuid;
 use bcrypt::{hash, verify};
+use actix_ws::handle;
 
 
 #[get("/hello")]
@@ -120,6 +123,8 @@ pub async fn unauthorized() -> impl Responder {
 }
 
 #[get("/ws")]
-pub async fn initialize_ws(req: HttpRequest, stream: web::Payload,) -> impl Responder {
-    HttpResponse::Ok()
+pub async fn initialize_ws(sender: web::Data<mpsc::Sender<Command>>, req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, actix_web::Error> {
+    let (response, session, message) = handle(&req, stream)?;
+    spawn_local(handle_ws(sender.into_inner(), session, message));
+    Ok(response)
 }

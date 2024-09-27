@@ -7,9 +7,11 @@ use crate::schema::users::dsl::users;
 use actix_web::{dev::{Service, Url}, http::{Method, Uri}, web::{self}, App, HttpServer};
 use diesel::{self, RunQueryDsl, query_dsl::methods::FilterDsl, Connection, ExpressionMethods, PgConnection};
 use models::models::User;
-use routes::routes::{hello, unauthorized, user_signin, user_signup};
+use routes::routes::{hello, initialize_ws, unauthorized, user_signin, user_signup};
 use dotenv::dotenv;
 use schema::users::token;
+use socket::manager::ArenaHandler;
+use tokio::spawn;
 use std::{env, sync::{Arc, Mutex}};
 
 pub struct DBState{
@@ -21,6 +23,8 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let databse_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let connection = Arc::new(Mutex::new(PgConnection::establish(&databse_url).expect("Database not connected!")));
+    let arena_handler = ArenaHandler::new();
+    spawn(arena_handler.0.run());
 
     HttpServer::new(move || {
         let connection_clone = connection.clone();
@@ -28,6 +32,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(DBState{
                 client: Arc::clone(&connection)
             }))
+            .app_data(web::Data::new(arena_handler.1.clone()))
             .wrap_fn(move |mut req, srv| {
                 if req.path() != "/api/signup" && req.path() != "/api/signin" {
                     let headers = req.headers();
@@ -58,6 +63,7 @@ async fn main() -> std::io::Result<()> {
             .service(user_signup)
             .service(user_signin)
             .service(unauthorized)
+            .service(initialize_ws)
         )
     })
     .bind(("127.0.0.1", 8080))?
