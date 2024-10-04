@@ -28,6 +28,7 @@ pub enum Command {
     }
 }
 
+#[derive(Debug)]
 pub struct Room {
     room_id: String,
     users: Vec<ConnectionId>,
@@ -127,13 +128,13 @@ impl ArenaHandler {
             match command {
                 Command::Connect { sender } => {
                     let user_data = self.user_connect(sender.clone());
-                    let _ = sender.send(Message { optional: Some(user_data), audio: None }).await;
+                    let _ = sender.send(Message { optional: Some(user_data), audio: None }).await.unwrap();
                 },
                 Command::Disconnect { conn_id, room_id } => {
                     self.user_disconnect(conn_id, room_id);
                 },
                 Command::ClientMessage { conn_id, room_id, msg } => {
-                    let _ = self.send_message(conn_id, msg, room_id);
+                    let _ = self.send_message(conn_id, msg, room_id).await.unwrap();
                 }
             }
         }

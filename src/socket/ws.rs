@@ -60,7 +60,7 @@ pub async fn handle_ws(sender: Arc<mpsc::Sender<Command>>, mut session: Session,
                 if Instant::now().duration_since(last_heartbeat) > TIMEOUT {
                     break None
                 }
-                session.ping(b"").await.unwrap();
+                session.ping(b"hello").await.unwrap();
             }
         }
     };
