@@ -43,7 +43,7 @@ pub struct ReturnUser<'a> {
 #[diesel(table_name = crate::schema::sol_balance)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct SolBalance {
-    balance: f64,
-    user_id: i32
+    pub balance: f64,
+    pub user_id: i32
 }
 

@@ -1,7 +1,7 @@
-use crate::{models::models::{Any, NewUser, ReturnUser, User}, schema::users::{email, token, username}, socket::manager::Command, DBState};
+use crate::{models::models::{Any, NewUser, ReturnUser, SolBalance, User}, schema::users::{email, token, username}, socket::manager::Command, DBState};
 use crate::utils::response::{ErrorResponse, ApiResponse};
 use crate::socket::ws::handle_ws;
-use actix_web::{get, post, web::{self, Data, Json}, HttpRequest, HttpResponse, Responder};
+use actix_web::{get, post, put, web::{self, Data, Json}, HttpRequest, HttpResponse, Responder};
 use diesel::{self, query_dsl::methods::FilterDsl, ExpressionMethods, RunQueryDsl};
 use tokio::{sync::mpsc, task::spawn_local};
 use uuid::Uuid;
@@ -31,11 +31,15 @@ pub async fn user_signup(db: web::Data<DBState>, mut user_data: Json<NewUser>) -
             } else {
                 match web::block(move || {
                     let mut connection = user.1.client.lock().unwrap();
-                    diesel::insert_into(crate::schema::users::table)
+                    let user_id: i32 = diesel::insert_into(crate::schema::users::table)
                     .values(user.2.into_inner())
-                    .execute(&mut *connection)
+                    .returning(crate::schema::users::id)
+                    .get_result(&mut *connection)
                     .expect("User not created");
-                    drop(connection);
+                    diesel::insert_into(crate::schema::sol_balance::table)
+                    .values(SolBalance{ balance: 0.0, user_id})
+                    .execute(&mut *connection)
+                    .expect("Database crashed");
                 }).await {
                     Ok(_) => HttpResponse::Created().json(ApiResponse {
                         data: "user created"
@@ -127,4 +131,9 @@ pub async fn initialize_ws(sender: web::Data<mpsc::Sender<Command>>, req: HttpRe
     let (response, session, message) = handle(&req, stream)?;
     spawn_local(handle_ws(sender.into_inner(), session, message));
     Ok(response)
+}
+
+// #[put("/payment")]
+pub async fn _solana_balance_update() -> () {
+    todo!()
 }
